@@ -1,76 +1,124 @@
 <!DOCTYPE html>
 <html>
+
 <head>
+
     <title>Gate Simulation Indonesia</title>
-    <link rel="stylesheet" href="/static/style.css">
+
+    <link
+        rel="stylesheet"
+        href="/static/style.css"
+    >
+
 </head>
+
 <body>
 
-<h1>Gate Simulation Indonesia</h1>
+    <h1>Gate Simulation Indonesia</h1>
 
-<div class="main-container">
+    <div class="main-container">
 
-    <!-- CAMERA -->
-    <div class="camera-box">
+        <!-- CAMERA -->
+        <div class="camera-section">
 
-        <img src="/video_feed" width="640">
+            <div class="camera-box">
 
-    </div>
-
-    <!-- CONTROL -->
-    <div class="control-box">
-
-        <div class="card">
-
-            <h2>Gate IN</h2>
-
-            <form action="/gate_in" method="POST">
-
-                <input
-                    type="text"
-                    name="rfid"
-                    placeholder="RFID UID"
-                    required
+                <img
+                    src="/video_feed"
+                    width="640"
                 >
 
-                <button type="submit">
-                    RFID IN
-                </button>
+            </div>
 
-            </form>
+            <!-- OCR RESULT -->
+            <div class="plate-result">
+
+                <h2>Detected Plate</h2>
+
+                {% if plate %}
+
+                    <div class="plate-text">
+                        {{ plate }}
+                    </div>
+
+                {% else %}
+
+                    <div class="plate-empty">
+                        Belum ada plat terdeteksi
+                    </div>
+
+                {% endif %}
+
+            </div>
 
         </div>
 
-        <div class="card">
+        <!-- CONTROL -->
+        <div class="control-box">
 
-            <h2>Gate OUT</h2>
+            <!-- GATE IN -->
+            <div class="card">
 
-            <form action="/gate_out" method="POST">
+                <h2>Gate IN</h2>
 
-                <input
-                    type="text"
-                    name="rfid"
-                    placeholder="RFID UID"
-                    required
+                <form
+                    action="/gate_in"
+                    method="POST"
                 >
 
-                <button type="submit">
-                    RFID OUT
+                    <input
+                        type="text"
+                        name="rfid"
+                        placeholder="RFID UID"
+                        required
+                    >
+
+                    <button type="submit">
+                        RFID IN
+                    </button>
+
+                </form>
+
+            </div>
+
+            <!-- GATE OUT -->
+            <div class="card">
+
+                <h2>Gate OUT</h2>
+
+                <form
+                    action="/gate_out"
+                    method="POST"
+                >
+
+                    <input
+                        type="text"
+                        name="rfid"
+                        placeholder="RFID UID"
+                        required
+                    >
+
+                    <button type="submit">
+                        RFID OUT
+                    </button>
+
+                </form>
+
+            </div>
+
+            <!-- HISTORY -->
+            <a href="/history">
+
+                <button class="history-btn">
+                    Lihat History
                 </button>
 
-            </form>
+            </a>
 
         </div>
 
-        <a href="/history">
-            <button class="history-btn">
-                Lihat History
-            </button>
-        </a>
-
     </div>
-
-</div>
 
 </body>
+
 </html>

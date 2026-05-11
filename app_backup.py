@@ -11,13 +11,6 @@ from plate_detector import detect_plate
 app = Flask(__name__)
 
 # =====================================
-# GLOBAL
-# =====================================
-latest_plate_text = ""
-latest_frame = None
-latest_plate_crop = None
-
-# =====================================
 # CAMERA
 # =====================================
 camera = cv2.VideoCapture(0)
@@ -35,14 +28,7 @@ else:
 # =====================================
 # DATABASE
 # =====================================
-DB_NAME = 'data/database.db'
-
-# =====================================
-# INIT FOLDER
-# =====================================
-os.makedirs('data', exist_ok=True)
-os.makedirs('data/captures', exist_ok=True)
-os.makedirs('data/plates', exist_ok=True)
+DB_NAME = 'database.db'
 
 # =====================================
 # INIT DATABASE
@@ -59,7 +45,6 @@ def init_db():
         rfid TEXT,
         plate TEXT,
         image TEXT,
-        plate_image TEXT,
         time_in TEXT,
         time_out TEXT,
         status TEXT
@@ -73,13 +58,35 @@ def init_db():
 init_db()
 
 # =====================================
+# CAPTURE PLATE
+# =====================================
+def capture_plate():
+
+    global camera
+
+    success, frame = camera.read()
+
+    if not success:
+        return None, None
+
+    # DETECT OCR
+    plate_text, thresh = detect_plate(frame)
+
+    # SAVE IMAGE
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+    filename = f'static/captures/{timestamp}.jpg'
+
+    cv2.imwrite(filename, frame)
+
+    return plate_text, filename
+
+# =====================================
 # GENERATE FRAMES
 # =====================================
 def generate_frames():
 
-    global latest_plate_text
-    global latest_frame
-    global latest_plate_crop
+    global camera
 
     while True:
 
@@ -90,28 +97,63 @@ def generate_frames():
 
         display = frame.copy()
 
-        # DETECT OCR
-        plate_text, thresh = detect_plate(display)
+        # =========================
+        # DETECT PLATE
+        # =========================
+        gray = cv2.cvtColor(display, cv2.COLOR_BGR2GRAY)
 
-        # SAVE LAST RESULT
-        if plate_text is not None and plate_text != "":
+        blur = cv2.GaussianBlur(gray, (5, 5), 0)
 
-            latest_plate_text = plate_text
-            latest_frame = frame.copy()
-            latest_plate_crop = thresh.copy()
+        edged = cv2.Canny(blur, 100, 200)
 
-        # DISPLAY TEXT
-        cv2.putText(
-            display,
-            f"Plate: {latest_plate_text}",
-            (20, 40),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1,
-            (0, 255, 0),
-            2
+        contours, _ = cv2.findContours(
+            edged,
+            cv2.RETR_TREE,
+            cv2.CHAIN_APPROX_SIMPLE
         )
 
+        contours = sorted(
+            contours,
+            key=cv2.contourArea,
+            reverse=True
+        )[:20]
+
+        for contour in contours:
+
+            area = cv2.contourArea(contour)
+
+            if area < 2000:
+                continue
+
+            peri = cv2.arcLength(contour, True)
+
+            approx = cv2.approxPolyDP(
+                contour,
+                0.02 * peri,
+                True
+            )
+
+            if len(approx) == 4:
+
+                x, y, w, h = cv2.boundingRect(approx)
+
+                ratio = w / float(h)
+
+                if 2 < ratio < 6:
+
+                    cv2.drawContours(
+                        display,
+                        [approx],
+                        -1,
+                        (0, 255, 0),
+                        3
+                    )
+
+                    break
+
+        # =========================
         # ENCODE JPEG
+        # =========================
         ret, buffer = cv2.imencode('.jpg', display)
 
         frame = buffer.tobytes()
@@ -140,10 +182,7 @@ def video_feed():
 @app.route('/')
 def index():
 
-    return render_template(
-        'index.html',
-        plate=latest_plate_text
-    )
+    return render_template('index.html')
 
 # =====================================
 # GATE IN
@@ -151,32 +190,12 @@ def index():
 @app.route('/gate_in', methods=['POST'])
 def gate_in():
 
-    global latest_plate_text
-    global latest_frame
-    global latest_plate_crop
-
     rfid = request.form['rfid']
 
-    if latest_plate_text == "":
-        return "Plat belum terdeteksi"
+    plate, image = capture_plate()
 
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-
-    # SAVE FULL IMAGE
-    image_path = f'data/captures/{timestamp}.jpg'
-
-    cv2.imwrite(
-        image_path,
-        latest_frame
-    )
-
-    # SAVE PLATE IMAGE
-    plate_path = f'data/plates/{timestamp}.jpg'
-
-    cv2.imwrite(
-        plate_path,
-        latest_plate_crop
-    )
+    if plate is None or plate == "":
+        return "Plat tidak terdeteksi"
 
     conn = sqlite3.connect(DB_NAME)
 
@@ -187,16 +206,14 @@ def gate_in():
         rfid,
         plate,
         image,
-        plate_image,
         time_in,
         status
     )
-    VALUES (?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?)
     ''', (
         rfid,
-        latest_plate_text,
-        image_path,
-        plate_path,
+        plate,
+        image,
         datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'IN'
     ))
@@ -212,12 +229,12 @@ def gate_in():
 @app.route('/gate_out', methods=['POST'])
 def gate_out():
 
-    global latest_plate_text
-
     rfid = request.form['rfid']
 
-    if latest_plate_text == "":
-        return "Plat keluar belum terdeteksi"
+    plate_out, image = capture_plate()
+
+    if plate_out is None or plate_out == "":
+        return "Plat keluar tidak terdeteksi"
 
     conn = sqlite3.connect(DB_NAME)
 
@@ -238,8 +255,8 @@ def gate_out():
 
     plate_in = data[2]
 
-    # VALIDASI
-    if plate_in != latest_plate_text:
+    # VALIDASI PLAT
+    if plate_in != plate_out:
 
         conn.close()
 
@@ -248,10 +265,11 @@ def gate_out():
             Plat tidak cocok!<br><br>
 
             Plat IN : {plate_in}<br>
-            Plat OUT : {latest_plate_text}
+            Plat OUT : {plate_out}
             '''
         )
 
+    # UPDATE OUT
     cursor.execute('''
     UPDATE parking
     SET
@@ -296,6 +314,11 @@ def history():
 # RUN
 # =====================================
 if __name__ == '__main__':
+
+    os.makedirs(
+        'static/captures',
+        exist_ok=True
+    )
 
     app.run(
         host='0.0.0.0',
