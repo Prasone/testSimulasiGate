@@ -33,31 +33,41 @@ Sistem simulasi gerbang parkir Indonesia dengan deteksi plat nomor otomatis meng
 
 ## 🛠️ Teknologi & Library yang Digunakan
 
-### Backend
-| Teknologi | Deskripsi |
-|-----------|-----------|
-| **Python** | Bahasa pemrograman utama |
-| **Flask** | Web framework untuk membuat REST API dan web application |
-| **OpenCV** | Library untuk computer vision dan video processing |
-| **Pytesseract** | OCR engine untuk membaca teks dari gambar plat nomor |
-| **Imutils** | Utility functions untuk image processing |
-| **Numpy** | Array dan numerical computing |
-| **Pillow** | Image processing library |
-| **Threading** | Multi-threading untuk proses paralel |
+### 🔧 Backend Technologies
 
-### Frontend
-| Teknologi | Deskripsi |
-|-----------|-----------|
-| **HTML5** | Struktur markup halaman web |
-| **CSS3** | Styling dan layout dengan gradient, animations |
-| **JavaScript** | Interaktivitas dan dynamic content |
+| | | | |
+|:---:|:---:|:---:|:---:|
+| ![Python](https://img.shields.io/badge/Python-3.9+-blue?style=for-the-badge&logo=python&logoColor=white) | ![Flask](https://img.shields.io/badge/Flask-2.0+-black?style=for-the-badge&logo=flask&logoColor=white) | ![OpenCV](https://img.shields.io/badge/OpenCV-Computer%20Vision-green?style=for-the-badge&logo=opencv&logoColor=white) | ![Pytesseract](https://img.shields.io/badge/Pytesseract-OCR-red?style=for-the-badge&logo=ocr&logoColor=white) |
+| ![Imutils](https://img.shields.io/badge/Imutils-Image%20Processing-yellow?style=for-the-badge) | ![Numpy](https://img.shields.io/badge/Numpy-Array%20Computing-blue?style=for-the-badge&logo=numpy&logoColor=white) | ![Pillow](https://img.shields.io/badge/Pillow-Image%20Library-green?style=for-the-badge) | ![Threading](https://img.shields.io/badge/Threading-Multi--process-purple?style=for-the-badge) |
 
-### Hardware
-| Perangkat | Deskripsi |
-|----------|-----------|
-| **Raspberry Pi** | Server komputer single-board (opsional) |
-| **Webcam/USB Camera** | Untuk capture video feed |
-| **RFID Reader** | Untuk membaca kartu RFID (simulasi dengan input manual) |
+### 🎨 Frontend Technologies
+
+| | | |
+|:---:|:---:|:---:|
+| ![HTML5](https://img.shields.io/badge/HTML5-Markup-orange?style=for-the-badge&logo=html5&logoColor=white) | ![CSS3](https://img.shields.io/badge/CSS3-Styling-blue?style=for-the-badge&logo=css3&logoColor=white) | ![JavaScript](https://img.shields.io/badge/JavaScript-Interactive-yellow?style=for-the-badge&logo=javascript&logoColor=white) |
+
+### 🔌 Hardware & Tools
+
+| | | |
+|:---:|:---:|:---:|
+| ![Raspberry Pi](https://img.shields.io/badge/Raspberry%20Pi-Server-red?style=for-the-badge&logo=raspberrypi&logoColor=white) | ![Webcam](https://img.shields.io/badge/Webcam-Camera%20Feed-blue?style=for-the-badge) | ![RFID](https://img.shields.io/badge/RFID-Access%20Control-green?style=for-the-badge) |
+
+### 📚 Library Details
+
+**Backend Libraries:**
+- **Python** - Bahasa pemrograman utama
+- **Flask** - Web framework untuk membuat REST API dan web application
+- **OpenCV** - Library untuk computer vision dan video processing
+- **Pytesseract** - OCR engine untuk membaca teks dari gambar plat nomor
+- **Imutils** - Utility functions untuk image processing
+- **Numpy** - Array dan numerical computing
+- **Pillow** - Image processing library
+- **Threading** - Multi-threading untuk proses paralel
+
+**Frontend:**
+- **HTML5** - Struktur markup halaman web
+- **CSS3** - Styling dan layout dengan gradient, animations
+- **JavaScript** - Interaktivitas dan dynamic content
 
 ---
 
@@ -256,17 +266,3 @@ app.run(debug=True, port=5000)  # Ubah port sesuai kebutuhan
 - [ ] Dual-camera system
 
 ---
-
-## 👨‍💻 Author
-
-Gate Simulation Indonesia Project
-
----
-
-## 📞 Support
-
-Untuk pertanyaan atau masalah, silakan buat issue di repository.
-
----
-
-**Last Updated:** May 2026
