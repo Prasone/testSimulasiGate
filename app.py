@@ -17,6 +17,8 @@ app = Flask(__name__)
 latest_plate_text = ""
 latest_frame = None
 latest_plate_crop = None
+last_detected_plate = ""
+plate_counter = 0
 
 # =====================================
 # CAMERA
@@ -82,6 +84,9 @@ def generate_frames():
     global latest_frame
     global latest_plate_crop
 
+    global last_detected_plate
+    global plate_counter
+
     while True:
 
         success, frame = camera.read()
@@ -91,17 +96,37 @@ def generate_frames():
 
         display = frame.copy()
 
+        # =========================
         # DETECT OCR
+        # =========================
         plate_text, thresh = detect_plate(display)
 
-        # SAVE LAST RESULT
-        if plate_text is not None and plate_text != "":
+        # =========================
+        # STABILIZER OCR
+        # =========================
+        if plate_text:
 
-            latest_plate_text = plate_text
-            latest_frame = frame.copy()
-            latest_plate_crop = thresh.copy()
+            # Jika hasil sama
+            if plate_text == last_detected_plate:
 
+                plate_counter += 1
+
+            else:
+
+                # Reset counter
+                plate_counter = 0
+                last_detected_plate = plate_text
+
+            # Harus stabil 3 frame
+            if plate_counter >= 3:
+
+                latest_plate_text = plate_text
+                latest_frame = frame.copy()
+                latest_plate_crop = thresh.copy()
+
+        # =========================
         # DISPLAY TEXT
+        # =========================
         cv2.putText(
             display,
             f"Plate: {latest_plate_text}",
@@ -112,8 +137,13 @@ def generate_frames():
             2
         )
 
+        # =========================
         # ENCODE JPEG
-        ret, buffer = cv2.imencode('.jpg', display)
+        # =========================
+        ret, buffer = cv2.imencode(
+            '.jpg',
+            display
+        )
 
         frame = buffer.tobytes()
 

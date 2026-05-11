@@ -1,19 +1,85 @@
 import cv2
 import pytesseract
 import numpy as np
-import imutils
+import re
+
+# =====================================
+# VALIDASI FORMAT PLAT INDONESIA
+# =====================================
+def is_valid_plate(text):
+
+    # Contoh:
+    # B1234XYZ
+    # N1234AB
+    # L1234AA
+
+    pattern = r'^[A-Z]{1,2}[0-9]{1,4}[A-Z]{1,3}$'
+
+    return re.match(pattern, text) is not None
 
 
+# =====================================
+# DETECT PLATE
+# =====================================
 def detect_plate(frame):
 
     # =========================
-    # PREPROCESS
+    # RESIZE FRAME
     # =========================
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    frame = cv2.resize(
+        frame,
+        (640, 480)
+    )
 
-    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    display = frame.copy()
 
-    edged = cv2.Canny(blur, 100, 200)
+    # =========================
+    # GRAYSCALE
+    # =========================
+    gray = cv2.cvtColor(
+        frame,
+        cv2.COLOR_BGR2GRAY
+    )
+
+    # =========================
+    # NOISE REDUCTION
+    # =========================
+    blur = cv2.bilateralFilter(
+        gray,
+        11,
+        17,
+        17
+    )
+
+    # =========================
+    # CONTRAST
+    # =========================
+    clahe = cv2.createCLAHE(
+        clipLimit=2.0,
+        tileGridSize=(8, 8)
+    )
+
+    contrast = clahe.apply(blur)
+
+    # =========================
+    # EDGE DETECTION
+    # =========================
+    edged = cv2.Canny(
+        contrast,
+        100,
+        200
+    )
+
+    # =========================
+    # MORPHOLOGY
+    # =========================
+    kernel = np.ones((3, 3), np.uint8)
+
+    edged = cv2.morphologyEx(
+        edged,
+        cv2.MORPH_CLOSE,
+        kernel
+    )
 
     # =========================
     # FIND CONTOURS
@@ -28,21 +94,26 @@ def detect_plate(frame):
         contours,
         key=cv2.contourArea,
         reverse=True
-    )[:20]
+    )[:30]
 
-    plate = None
+    best_plate = None
+    best_crop = None
 
     # =========================
-    # DETECT PLATE SHAPE
+    # FIND BEST RECTANGLE
     # =========================
     for contour in contours:
 
         area = cv2.contourArea(contour)
 
-        if area < 2000:
+        # FILTER AREA
+        if area < 2500:
             continue
 
-        peri = cv2.arcLength(contour, True)
+        peri = cv2.arcLength(
+            contour,
+            True
+        )
 
         approx = cv2.approxPolyDP(
             contour,
@@ -50,86 +121,104 @@ def detect_plate(frame):
             True
         )
 
-        # Rectangle detection
-        if len(approx) == 4:
+        # MUST RECTANGLE
+        if len(approx) != 4:
+            continue
 
-            x, y, w, h = cv2.boundingRect(approx)
+        x, y, w, h = cv2.boundingRect(approx)
 
-            ratio = w / float(h)
+        ratio = w / float(h)
 
-            # Ratio plat Indonesia
-            if 2 < ratio < 6:
-                plate = approx
-                break
+        # RATIO PLAT INDONESIA
+        if ratio < 2 or ratio > 6:
+            continue
 
-    # =========================
-    # IF NO PLATE
-    # =========================
-    if plate is None:
-        return None, None
+        # SIZE FILTER
+        if w < 100 or h < 30:
+            continue
 
-    # =========================
-    # CROP PLATE
-    # =========================
-    x, y, w, h = cv2.boundingRect(plate)
+        # DRAW BOX
+        cv2.drawContours(
+            display,
+            [approx],
+            -1,
+            (0, 255, 0),
+            3
+        )
 
-    plate_img = gray[y:y+h, x:x+w]
+        # CROP PLATE
+        plate_img = gray[
+            y:y+h,
+            x:x+w
+        ]
 
-    # =========================
-    # RESIZE
-    # =========================
-    plate_img = cv2.resize(
-        plate_img,
-        None,
-        fx=4,
-        fy=4,
-        interpolation=cv2.INTER_CUBIC
-    )
+        # RESIZE OCR
+        plate_img = cv2.resize(
+            plate_img,
+            None,
+            fx=4,
+            fy=4,
+            interpolation=cv2.INTER_CUBIC
+        )
 
-    # =========================
-    # CLAHE
-    # =========================
-    clahe = cv2.createCLAHE(
-        clipLimit=2.0,
-        tileGridSize=(8, 8)
-    )
+        # OCR CLAHE
+        plate_img = clahe.apply(plate_img)
 
-    plate_img = clahe.apply(plate_img)
+        # ADAPTIVE THRESHOLD
+        thresh = cv2.adaptiveThreshold(
+            plate_img,
+            255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY,
+            11,
+            2
+        )
 
-    # =========================
-    # THRESHOLD
-    # =========================
-    _, thresh = cv2.threshold(
-        plate_img,
-        0,
-        255,
-        cv2.THRESH_BINARY + cv2.THRESH_OTSU
-    )
+        # INVERT
+        thresh = cv2.bitwise_not(thresh)
 
-    # =========================
-    # OCR CONFIG
-    # =========================
-    custom_config = (
-        r'--oem 3 '
-        r'--psm 7 '
-        r'-c tessedit_char_whitelist='
-        r'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-    )
+        # MORPH CLEAN
+        thresh = cv2.morphologyEx(
+            thresh,
+            cv2.MORPH_CLOSE,
+            kernel
+        )
 
-    # =========================
-    # OCR
-    # =========================
-    text = pytesseract.image_to_string(
-        thresh,
-        config=custom_config
-    )
+        # =========================
+        # OCR CONFIG
+        # =========================
+        custom_config = (
+            r'--oem 3 '
+            r'--psm 7 '
+            r'-c tessedit_char_whitelist='
+            r'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+        )
 
-    # =========================
-    # CLEAN TEXT
-    # =========================
-    text = ''.join(
-        c for c in text
-        if c.isalnum()
-    )
+        # OCR
+        text = pytesseract.image_to_string(
+            thresh,
+            config=custom_config
+        )
 
-    return text, thresh
+        # CLEAN TEXT
+        text = ''.join(
+            c for c in text
+            if c.isalnum()
+        )
+
+        text = text.upper()
+
+        # VALIDATE
+        if len(text) < 4:
+            continue
+
+        # VALIDATE INDONESIA FORMAT
+        if not is_valid_plate(text):
+            continue
+
+        best_plate = text
+        best_crop = thresh
+
+        break
+
+    return best_plate, best_crop
