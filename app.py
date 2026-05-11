@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, Response
+from flask import send_from_directory
 import cv2
 import sqlite3
 import os
@@ -290,6 +291,26 @@ def history():
     return render_template(
         'history.html',
         data=data
+    )
+
+# =====================================
+# SERVE IMAGE
+# =====================================
+@app.route('/captures/<filename>')
+def captures(filename):
+
+    return send_from_directory(
+        'data/captures',
+        filename
+    )
+
+
+@app.route('/plates/<filename>')
+def plates(filename):
+
+    return send_from_directory(
+        'data/plates',
+        filename
     )
 
 # =====================================
