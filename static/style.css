@@ -1,6 +1,7 @@
 body {
     font-family: Arial;
     background: #f0f0f0;
+    margin: 0;
     padding: 20px;
 }
 
@@ -8,10 +9,28 @@ h1 {
     text-align: center;
 }
 
-.container {
+.main-container {
     display: flex;
-    gap: 20px;
+    gap: 30px;
     justify-content: center;
+    align-items: flex-start;
+    margin-top: 30px;
+}
+
+.camera-box {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.camera-box img {
+    border-radius: 10px;
+}
+
+.control-box {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 }
 
 .card {
@@ -32,17 +51,6 @@ button {
     cursor: pointer;
 }
 
-img {
-    border-radius: 10px;
-}
-
-table {
+.history-btn {
     width: 100%;
-    background: white;
-    border-collapse: collapse;
-}
-
-th, td {
-    border: 1px solid #ccc;
-    padding: 10px;
 }

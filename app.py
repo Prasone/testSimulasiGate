@@ -10,6 +10,12 @@ from plate_detector import detect_plate
 # =====================================
 app = Flask(__name__)
 
+camera = cv2.VideoCapture(0)
+
+camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+camera.set(cv2.CAP_PROP_FPS, 30)
+
 # =====================================
 # DATABASE
 # =====================================
@@ -47,19 +53,14 @@ init_db()
 # =====================================
 def capture_plate():
 
-    cap = cv2.VideoCapture(0)
+    global camera
 
-    if not cap.isOpened():
-        return None, None
-
-    ret, frame = cap.read()
-
-    cap.release()
+    ret, frame = camera.read()
 
     if not ret:
         return None, None
 
-    # Detect plate
+    # DETECT PLATE
     plate_text, thresh = detect_plate(frame)
 
     # Timestamp
@@ -68,9 +69,99 @@ def capture_plate():
     # Save image
     filename = f'static/captures/{timestamp}.jpg'
 
+    # Save full frame
     cv2.imwrite(filename, frame)
 
-    return plate_text, filename
+    return plate_text, 
+    
+
+# =====================================
+# generate frame
+# =====================================
+def generate_frames():
+
+    global camera
+
+    while True:
+
+        success, frame = camera.read()
+
+        if not success:
+            break
+
+        # =========================
+        # DETECT PLATE REALTIME
+        # =========================
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        blur = cv2.GaussianBlur(gray, (5, 5), 0)
+
+        edged = cv2.Canny(blur, 100, 200)
+
+        contours, _ = cv2.findContours(
+            edged,
+            cv2.RETR_TREE,
+            cv2.CHAIN_APPROX_SIMPLE
+        )
+
+        contours = sorted(
+            contours,
+            key=cv2.contourArea,
+            reverse=True
+        )[:20]
+
+        for contour in contours:
+
+            area = cv2.contourArea(contour)
+
+            if area < 2000:
+                continue
+
+            peri = cv2.arcLength(contour, True)
+
+            approx = cv2.approxPolyDP(
+                contour,
+                0.02 * peri,
+                True
+            )
+
+            if len(approx) == 4:
+
+                x, y, w, h = cv2.boundingRect(approx)
+
+                ratio = w / float(h)
+
+                if 2 < ratio < 6:
+
+                    cv2.drawContours(
+                        frame,
+                        [approx],
+                        -1,
+                        (0, 255, 0),
+                        3
+                    )
+
+                    break
+
+        # Encode JPEG
+        ret, buffer = cv2.imencode('.jpg', frame)
+
+        frame = buffer.tobytes()
+
+        yield (
+            b'--frame\r\n'
+            b'Content-Type: image/jpeg\r\n\r\n' +
+            frame +
+            b'\r\n'
+        )
+
+@app.route('/video_feed')
+def video_feed():
+
+    return Response(
+        generate_frames(),
+        mimetype='multipart/x-mixed-replace; boundary=frame'
+    )        
 
 # =====================================
 # HOME
