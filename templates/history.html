@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>History</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<h1>History Kendaraan</h1>
+
+<table>
+
+<tr>
+    <th>ID</th>
+    <th>RFID</th>
+    <th>Plat</th>
+    <th>Foto</th>
+    <th>Jam Masuk</th>
+    <th>Jam Keluar</th>
+    <th>Status</th>
+</tr>
+
+{% for row in data %}
+<tr>
+    <td>{{ row[0] }}</td>
+    <td>{{ row[1] }}</td>
+    <td>{{ row[2] }}</td>
+
+    <td>
+        <img src="/{{ row[3] }}" width="250">
+    </td>
+
+    <td>{{ row[4] }}</td>
+    <td>{{ row[5] }}</td>
+    <td>{{ row[6] }}</td>
+</tr>
+{% endfor %}
+
+</table>
+
+<a href="/">
+    <button>Kembali</button>
+</a>
+
+</body>
+</html>

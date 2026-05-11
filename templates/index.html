@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gate Simulation</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<h1>Gate Simulation Indonesia</h1>
+
+<div class="container">
+
+    <div class="card">
+        <h2>Gate IN</h2>
+
+        <form action="/gate_in" method="POST">
+            <input type="text" name="rfid" placeholder="RFID UID" required>
+            <button type="submit">RFID IN</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Gate OUT</h2>
+
+        <form action="/gate_out" method="POST">
+            <input type="text" name="rfid" placeholder="RFID UID" required>
+            <button type="submit">RFID OUT</button>
+        </form>
+    </div>
+
+</div>
+
+<a href="/history">
+    <button>Lihat History</button>
+</a>
+
+</body>
+</html>
