@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, Response
 import cv2
 import sqlite3
 import os
@@ -10,11 +10,20 @@ from plate_detector import detect_plate
 # =====================================
 app = Flask(__name__)
 
+# =====================================
+# CAMERA
+# =====================================
 camera = cv2.VideoCapture(0)
 
 camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 camera.set(cv2.CAP_PROP_FPS, 30)
+camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
+if not camera.isOpened():
+    print("Camera gagal dibuka")
+else:
+    print("Camera berhasil dibuka")
 
 # =====================================
 # DATABASE
@@ -55,28 +64,25 @@ def capture_plate():
 
     global camera
 
-    ret, frame = camera.read()
+    success, frame = camera.read()
 
-    if not ret:
+    if not success:
         return None, None
 
-    # DETECT PLATE
+    # DETECT OCR
     plate_text, thresh = detect_plate(frame)
 
-    # Timestamp
+    # SAVE IMAGE
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-    # Save image
     filename = f'static/captures/{timestamp}.jpg'
 
-    # Save full frame
     cv2.imwrite(filename, frame)
 
-    return plate_text, 
-    
+    return plate_text, filename
 
 # =====================================
-# generate frame
+# GENERATE FRAMES
 # =====================================
 def generate_frames():
 
@@ -87,12 +93,14 @@ def generate_frames():
         success, frame = camera.read()
 
         if not success:
-            break
+            continue
+
+        display = frame.copy()
 
         # =========================
-        # DETECT PLATE REALTIME
+        # DETECT PLATE
         # =========================
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(display, cv2.COLOR_BGR2GRAY)
 
         blur = cv2.GaussianBlur(gray, (5, 5), 0)
 
@@ -134,7 +142,7 @@ def generate_frames():
                 if 2 < ratio < 6:
 
                     cv2.drawContours(
-                        frame,
+                        display,
                         [approx],
                         -1,
                         (0, 255, 0),
@@ -143,8 +151,10 @@ def generate_frames():
 
                     break
 
-        # Encode JPEG
-        ret, buffer = cv2.imencode('.jpg', frame)
+        # =========================
+        # ENCODE JPEG
+        # =========================
+        ret, buffer = cv2.imencode('.jpg', display)
 
         frame = buffer.tobytes()
 
@@ -155,13 +165,16 @@ def generate_frames():
             b'\r\n'
         )
 
+# =====================================
+# VIDEO FEED
+# =====================================
 @app.route('/video_feed')
 def video_feed():
 
     return Response(
         generate_frames(),
         mimetype='multipart/x-mixed-replace; boundary=frame'
-    )        
+    )
 
 # =====================================
 # HOME
@@ -182,7 +195,7 @@ def gate_in():
     plate, image = capture_plate()
 
     if plate is None or plate == "":
-        return 'Plat tidak terdeteksi'
+        return "Plat tidak terdeteksi"
 
     conn = sqlite3.connect(DB_NAME)
 
@@ -218,17 +231,15 @@ def gate_out():
 
     rfid = request.form['rfid']
 
-    # Capture ulang plat keluar
     plate_out, image = capture_plate()
 
     if plate_out is None or plate_out == "":
-        return 'Plat keluar tidak terdeteksi'
+        return "Plat keluar tidak terdeteksi"
 
     conn = sqlite3.connect(DB_NAME)
 
     cursor = conn.cursor()
 
-    # Cari data kendaraan masuk
     cursor.execute('''
     SELECT * FROM parking
     WHERE rfid=? AND status='IN'
@@ -238,14 +249,13 @@ def gate_out():
 
     data = cursor.fetchone()
 
-    # RFID tidak ditemukan
     if data is None:
         conn.close()
-        return 'Data RFID tidak ditemukan'
+        return "RFID tidak ditemukan"
 
     plate_in = data[2]
 
-    # Validasi plat
+    # VALIDASI PLAT
     if plate_in != plate_out:
 
         conn.close()
@@ -259,7 +269,7 @@ def gate_out():
             '''
         )
 
-    # Update data keluar
+    # UPDATE OUT
     cursor.execute('''
     UPDATE parking
     SET
@@ -305,14 +315,14 @@ def history():
 # =====================================
 if __name__ == '__main__':
 
-    # Folder capture
     os.makedirs(
         'static/captures',
         exist_ok=True
     )
 
     app.run(
-        debug=True,
         host='0.0.0.0',
-        port=5000
+        port=5000,
+        debug=False,
+        threaded=True
     )
