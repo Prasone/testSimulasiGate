@@ -41,7 +41,7 @@ h1 {
 }
 
 input {
-    width: 100%;
+    width: 90%;
     padding: 10px;
     margin-bottom: 10px;
 }
@@ -49,6 +49,9 @@ input {
 button {
     padding: 10px 20px;
     cursor: pointer;
+    color: rgb(255, 255, 255);
+    background: #007bff;
+    border: none;
 }
 
 .history-btn {
